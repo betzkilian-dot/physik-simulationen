@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#eef1f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0d14" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Physik-Sims">
+<title>Physik-Simulationen</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<style>
+/* Sammlung – Seite im iPad-Glas-Stil (Spec 2026-11-25-sammlung-glas-design). Hell/Dunkel nur über prefers-color-scheme. */
+:root {
+  color-scheme: light dark;
+  /* hell */
+  --bg: #eef1f8; --txt: #111111; --mut: #5f6675; --mutsvg: #55607a; --akz: #007aff; --akzt: #ffffff;
+  --glas: rgba(255, 255, 255, .55); --glas2: rgba(255, 255, 255, .6); --rand: rgba(255, 255, 255, .85);
+  --schatten: 0 8px 32px rgba(31, 38, 135, .12); --glanz: rgba(255, 255, 255, .35);
+  --deckend: #f8f9fd; --deckend2: #ffffff; --schleier: rgba(0, 0, 0, .18); --segment-an: #ffffff;
+  --tapete:
+    radial-gradient(circle at 15% 20%, #ffd6e7 0, transparent 40%),
+    radial-gradient(circle at 85% 10%, #c7dcff 0, transparent 45%),
+    radial-gradient(circle at 70% 85%, #d4f5e9 0, transparent 45%),
+    radial-gradient(circle at 30% 90%, #e7dcff 0, transparent 40%);
+  --tch: rgba(175, 82, 222, .12); --tchl: rgba(175, 82, 222, .38); --tcht: #7b2fa6;
+  --neu: #15803d; --neubg: #dcfce7; --akt: #b45309; --aktbg: #fef3c7; --fehler: #b42318; --fehlerbg: #fde8e7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d14; --txt: #f5f5f7; --mut: #a1a1aa; --mutsvg: #b4bccd; --akz: #0a84ff; --akzt: #ffffff;
+    --glas: rgba(30, 30, 40, .45); --glas2: rgba(255, 255, 255, .10); --rand: rgba(255, 255, 255, .14);
+    --schatten: 0 8px 32px rgba(0, 0, 0, .45); --glanz: rgba(255, 255, 255, .12);
+    --deckend: #1a1c28; --deckend2: #262938; --schleier: rgba(0, 0, 0, .4); --segment-an: #5b6078;
+    --tapete:
+      radial-gradient(circle at 15% 20%, #5b2a86 0, transparent 42%),
+      radial-gradient(circle at 85% 15%, #0f4c81 0, transparent 45%),
+      radial-gradient(circle at 70% 90%, #0b5d4b 0, transparent 45%),
+      radial-gradient(circle at 30% 85%, #3a1f5d 0, transparent 40%);
+    --tch: rgba(191, 90, 242, .16); --tchl: rgba(191, 90, 242, .42); --tcht: #dcb4ff;
+    --neu: #86efac; --neubg: #14361f; --akt: #fcd34d; --aktbg: #3a2c0b; --fehler: #ffb4ab; --fehlerbg: #3b1714;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0; background-color: var(--bg); color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px; line-height: 1.4; -webkit-font-smoothing: antialiased;
+}
+button, a, input { font: inherit; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--akz); outline-offset: 2px; }
+
+/* Feststehender Farbverlauf hinter allem (eigenes Element: background-attachment: fixed kann Safari auf dem iPad nicht) */
+.tapete { position: fixed; inset: 0; z-index: -1; background: var(--tapete); pointer-events: none; }
+
+/* ---------- Glas ---------- */
+.glas {
+  background: var(--glas); border: 1px solid var(--rand);
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: var(--schatten), inset 0 1px 0 var(--glanz);
+}
+.glas2 {
+  background: var(--glas2); border: 1px solid var(--rand);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+}
+/* Ohne Unschärfe (ältere Geräte, „Transparenz reduzieren“ greift ohnehin) wären die Flächen zu durchsichtig: deckend. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glas { background: var(--deckend); }
+  .glas2 { background: var(--deckend2); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glas { background: var(--deckend); }
+  .glas2 { background: var(--deckend2); }
+}
+
+.app {
+  display: flex; gap: 14px; min-height: 100vh;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left));
+}
+
+/* ---------- Seitenleiste ---------- */
+.seitenleiste {
+  width: 230px; flex: none; align-self: flex-start; position: sticky; top: 14px;
+  height: calc(100vh - 28px); overflow-y: auto; border-radius: 24px; padding: 18px 12px;
+  display: flex; flex-direction: column;
+}
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; padding: 0 8px 14px; letter-spacing: -.01em; }
+.logo-zeichen {
+  width: 32px; height: 32px; flex: none; border-radius: 9px; background: linear-gradient(135deg, #5ac8fa, #007aff);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;
+}
+.suche { display: flex; align-items: center; gap: 6px; border-radius: 12px; padding: 0 10px; min-height: 46px; margin-bottom: 4px; }
+.lupe { font-size: 13px; opacity: .7; flex: none; }
+#suche {
+  flex: 1; min-width: 0; height: 44px; border: 0; background: transparent; outline: none; font-size: 16px;
+  -webkit-appearance: none; appearance: none;
+}
+#suche::placeholder { color: var(--mut); }
+.suche:focus-within { outline: 3px solid var(--akz); outline-offset: 1px; }
+.gruppe h2 { font-size: 12px; font-weight: 600; color: var(--mut); margin: 0; padding: 14px 10px 6px; }
+.gruppe .wahl { display: flex; flex-direction: column; gap: 2px; }
+.gruppe-lehrkraft { margin-top: auto; }
+.eintrag {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 10px;
+  border: 0; border-radius: 12px; background: transparent; text-align: left; text-decoration: none; cursor: pointer; font-size: 15px;
+}
+.eintrag .sym { width: 22px; flex: none; text-align: center; color: var(--akz); }
+.eintrag:hover { background: var(--glas2); }
+.eintrag[aria-pressed="true"] { background: var(--akz); color: var(--akzt); font-weight: 600; }
+.eintrag[aria-pressed="true"] .sym { color: var(--akzt); }
+
+/* ---------- Hauptbereich ---------- */
+main { flex: 1; min-width: 0; padding: 8px 6px; display: flex; flex-direction: column; gap: 16px; }
+.seitentitel { margin: 4px 4px 2px; font-size: 32px; font-weight: 700; letter-spacing: -.02em; }
+#karten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+
+.karte { border-radius: 24px; min-width: 0; transition: transform .14s ease-out, box-shadow .14s ease-out; }
+/* Kurzes Antippen: Karte gibt leicht nach (nur ohne „Bewegung reduzieren“) */
+@media (prefers-reduced-motion: no-preference) {
+  .karte:active { transform: scale(.98); box-shadow: 0 4px 16px rgba(0, 0, 0, .12), inset 0 1px 0 var(--glanz); }
+}
+.karte-flaeche {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 44px; padding: 12px; margin: 0;
+  border: 0; border-radius: inherit; background: transparent; text-align: left; text-decoration: none; cursor: pointer;
+}
+.karte .kachel { display: block; width: 150px; flex: none; border-radius: 16px; overflow: hidden; background: var(--glas2); }
+/* Kachel-Verlauf durchsichtig: das Glas darunter ist der Grund (sonst Nähte, s. ERKENNTNISSE) */
+.kachel svg, .mini svg { display: block; width: 100%; height: auto; --mut: var(--mutsvg); --art1: transparent; --art2: transparent; }
+.info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: var(--mut); font-weight: 500; margin: 0; }
+.tt { display: block; font-size: 17px; font-weight: 600; margin: 2px 0 10px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.karte-hinweis {
+  align-self: flex-start; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 999px;
+  background: var(--glas2); border: 1px solid var(--rand); color: var(--akz); font-weight: 600; font-size: 14px;
+}
+.pfeil { flex: none; align-self: center; margin-left: auto; padding: 0 4px 0 2px; font-size: 30px; line-height: 1; font-weight: 300; color: var(--mut); opacity: .7; }
+.marke { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; letter-spacing: .02em; }
+.marke-neu { color: var(--neu); background: var(--neubg); }
+.marke-aktualisiert { color: var(--akt); background: var(--aktbg); }
+
+.knopf {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 9px 16px;
+  border: 1px solid var(--rand); border-radius: 12px; background: var(--glas2); text-decoration: none; cursor: pointer;
+  font-size: 15px; line-height: 1.2;
+}
+.knopf.primaer { background: var(--akz); color: var(--akzt); border-color: transparent; font-weight: 600; }
+.knopf[aria-busy="true"] { opacity: .6; cursor: progress; }
+
+#leer-hinweis { border-radius: 24px; padding: 28px 20px; text-align: center; }
+#leer-hinweis p { margin: 0 0 12px; font-size: 17px; font-weight: 600; }
+.fuss { color: var(--mut); font-size: 13px; padding: 4px 4px 12px; }
+
+/* ---------- Glasblatt ---------- */
+#schleier { position: fixed; inset: 0; z-index: 20; background: var(--schleier); }
+#blatt {
+  position: fixed; z-index: 21; left: 50%; bottom: 14px; transform: translateX(-50%);
+  width: min(680px, calc(100vw - 28px)); max-height: calc(100vh - 28px); max-height: calc(100dvh - 28px);
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  border-radius: 30px; padding: 10px 22px 22px; outline: none;
+  animation: blatt-hoch .22s ease-out;
+}
+@keyframes blatt-hoch { from { opacity: 0; translate: 0 24px; } }
+@media (prefers-reduced-motion: reduce) { #blatt { animation: none; } }
+.griff { width: 40px; height: 5px; border-radius: 3px; background: var(--mut); opacity: .5; margin: 0 auto 14px; }
+.blatt-kopf { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.mini { width: 84px; flex: none; border-radius: 12px; overflow: hidden; background: var(--glas2); }
+.blatt-titelblock { flex: 1; min-width: 0; }
+#blatt .kurztext { margin: -4px 0 14px; color: var(--mut); font-size: 14px; }
+#blatt-titel { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.zu {
+  flex: none; align-self: flex-start; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 15px; color: var(--mut); cursor: pointer; padding: 0;
+}
+.segment { display: inline-flex; border-radius: 12px; padding: 3px; margin: 0 0 14px; }
+.segment-knopf {
+  min-width: 72px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 9px; background: transparent;
+  font-size: 15px; cursor: pointer;
+}
+.segment-knopf[aria-pressed="true"] { background: var(--segment-an); box-shadow: 0 1px 4px rgba(0, 0, 0, .15); font-weight: 600; }
+
+.aktionen, .lehrer-knoepfe { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; }
+.aktion {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 88px; padding: 8px;
+  border-radius: 20px; text-align: center; text-decoration: none; cursor: pointer; font-size: 13px; font-weight: 500; line-height: 1.2;
+}
+.aktion { min-width: 0; }
+.aktion .txt { max-width: 100%; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+.aktion .sym { font-size: 24px; line-height: 1; color: var(--akz); }
+.aktion .sym svg { display: block; width: 24px; height: 24px; }
+.aktion.haupt { background: var(--akz); color: var(--akzt); border: 1px solid transparent; }
+.aktion.haupt .sym { color: var(--akzt); }
+.aktion:active { filter: brightness(.95); }
+.aktion[aria-busy="true"] { opacity: .6; cursor: progress; }
+
+/* Lehrerreihe: abgesetzt, violetter Ton */
+.lehrerspalte { margin-top: 16px; padding: 12px; border-radius: 22px; background: var(--tch); border: 1px solid var(--tchl); }
+.lehrerspalte h3 { margin: 0 0 8px 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tcht); }
+.lehrer-knoepfe { gap: 8px; }
+.aktion.lehrer { position: relative; min-height: 64px; font-size: 12.5px; padding: 8px 6px; background: var(--glas2); border: 1px solid var(--tchl); color: var(--tcht); }
+.aktion.lehrer .sym { font-size: 20px; color: var(--tcht); }
+.aktion.lehrer.bereit { border: 2px solid var(--tcht); font-weight: 600; }
+.lehrer-marke { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--akt); }
+.lehrer-marke.neu { background: var(--neu); }
+.karten-meldung { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--fehlerbg); color: var(--fehler); font-size: 14px; }
+.karten-meldung.info { background: var(--deckend2); color: var(--txt); }
+
+/* ---------- Anmeldung ---------- */
+#anmelde-dialog {
+  border-radius: 22px; color: var(--txt); padding: 22px; width: min(420px, calc(100vw - 32px));
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { #anmelde-dialog { background: var(--deckend); } }
+#anmelde-dialog::backdrop { background: rgba(5, 8, 15, .4); }
+#anmelde-dialog h2 { margin: 0 0 12px; font-size: 19px; }
+#anmelde-dialog label { display: block; margin-bottom: 12px; }
+#passwort {
+  display: block; width: 100%; margin-top: 4px; min-height: 44px; padding: 8px 12px; border-radius: 12px;
+  border: 1px solid var(--rand); background: var(--deckend2); color: var(--txt); font-size: 16px;
+}
+.haken { display: flex !important; align-items: center; gap: 10px; min-height: 44px; }
+.haken input { width: 22px; height: 22px; margin: 0; accent-color: var(--akz); }
+#anmelde-meldung { min-height: 1.4em; margin: 0 0 12px; color: var(--fehler); }
+#anmelde-meldung.info { color: var(--mut); }
+#anmelde-meldung code { font-size: 14px; }
+.dialog-knoepfe { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---------- QR-Ebene (schwarz auf weiß, über allem) ---------- */
+#qr-ebene {
+  position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; cursor: pointer;
+}
+.qr-code {
+  width: min(80vw, 80vh); height: min(80vw, 80vh); background: #fff; color: #000; padding: 6%;
+  border-radius: 8px; flex: none;
+}
+.qr-code svg { display: block; width: 100%; height: 100%; }
+#qr-titel { margin: 12px 0 2px; font-size: 22px; font-weight: 700; text-align: center; }
+.qr-adresse { margin: 0; color: var(--mut); text-align: center; word-break: break-all; }
+.qr-hinweis { margin: 6px 0 0; color: var(--mut); font-size: 13px; }
+
+/* ---------- Schmal: Glasleiste oben, Blatt volle Breite ---------- */
+@media (max-width: 900px) {
+  .app { flex-direction: column; gap: 12px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 12px max(12px, env(safe-area-inset-left)); }
+  .seitenleiste {
+    position: sticky; top: 8px; z-index: 5; width: auto; height: auto; overflow: visible; align-self: stretch;
+    border-radius: 22px; padding: 8px 10px;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "logo suche lehrkraft" "kurse kurse kurse";
+    gap: 6px 10px; align-items: center;
+  }
+  .logo { grid-area: logo; padding: 0 2px; font-size: 17px; }
+  .suche { grid-area: suche; margin: 0; }
+  .gruppe-kurse { grid-area: kurse; min-width: 0; }
+  .gruppe-lehrkraft { grid-area: lehrkraft; margin: 0; }
+  .gruppe h2, .gruppe-werkzeuge { display: none; }
+  .gruppe-kurse .wahl {
+    flex-direction: row; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 2px;
+  }
+  .gruppe-kurse .wahl::-webkit-scrollbar { display: none; }
+  .gruppe-kurse .eintrag {
+    width: auto; flex: none; white-space: nowrap; border-radius: 999px; padding: 8px 14px;
+    background: var(--glas2); border: 1px solid var(--rand);
+  }
+  .gruppe-kurse .eintrag[aria-pressed="true"] { background: var(--akz); border-color: transparent; }
+  .gruppe-kurse .sym { display: none; }
+  .gruppe-lehrkraft .eintrag { width: auto; padding: 8px 12px; }
+  main { padding: 4px 2px; }
+  .seitentitel { font-size: 28px; }
+  #blatt {
+    left: 0; right: 0; bottom: 0; transform: none; width: auto; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px);
+    border-radius: 28px 28px 0 0; border-bottom: 0;
+    padding: 10px max(18px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  }
+}
+@media (max-width: 700px) {
+  #karten { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .nur-breit, .logo-text { display: none; }
+  .logo { gap: 0; }
+  .gruppe-lehrkraft .eintrag { min-width: 44px; justify-content: center; padding: 8px 10px; gap: 4px; }
+  .gruppe-lehrkraft .sym { width: auto; }
+  .karte .kachel { width: 120px; }
+  .mini { width: 64px; }
+  #blatt-titel { font-size: 19px; }
+}
+
+</style>
+</head>
+<body>
+<div class="tapete" aria-hidden="true"></div>
+<div class="app">
+<nav id="filter" class="seitenleiste glas" aria-label="Kurse und Suche">
+<div class="logo"><span class="logo-zeichen" aria-hidden="true">⚛</span><span class="logo-text">Physik</span></div>
+<label class="suche glas2"><span class="lupe" aria-hidden="true">🔍</span><input type="search" id="suche" placeholder="Suchen" aria-label="Titel oder Thema suchen" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>
+<div class="gruppe gruppe-kurse" role="group" aria-labelledby="kurse-titel">
+<h2 id="kurse-titel">Kurse</h2>
+<div class="wahl">
+<button type="button" class="eintrag" data-kurs="alle" aria-pressed="true"><span class="sym" aria-hidden="true">◎</span><span>Alle</span></button>
+<button type="button" class="eintrag" data-kurs="Ph 12 eA" data-jahrgang="Ph 12" data-stufe="eA" aria-pressed="false"><span class="sym" aria-hidden="true">⑫</span><span>Ph 12 eA</span></button>
+<button type="button" class="eintrag" data-kurs="Ph 12 gA" data-jahrgang="Ph 12" data-stufe="gA" aria-pressed="false"><span class="sym" aria-hidden="true">⑫</span><span>Ph 12 gA</span></button>
+<button type="button" class="eintrag" data-kurs="Ph 13 eA" data-jahrgang="Ph 13" data-stufe="eA" aria-pressed="false"><span class="sym" aria-hidden="true">⑬</span><span>Ph 13 eA</span></button>
+<button type="button" class="eintrag" data-kurs="Ph 13 gA" data-jahrgang="Ph 13" data-stufe="gA" aria-pressed="false"><span class="sym" aria-hidden="true">⑬</span><span>Ph 13 gA</span></button>
+</div>
+</div>
+<div class="gruppe gruppe-werkzeuge">
+<h2>Werkzeuge</h2>
+<div class="wahl">
+<a class="eintrag" href="https://betzkilian-dot.github.io/stroboskop/" target="_blank" rel="noopener"><span class="sym" aria-hidden="true">◐</span><span>Stroboskop-App ↗</span></a>
+</div>
+</div>
+<div class="gruppe gruppe-lehrkraft">
+<h2>Lehrkraft</h2>
+<div class="wahl">
+<button type="button" class="eintrag" id="anmelden" aria-label="Anmelden (Lehrkraft)" title="Anmelden (Lehrkraft)"><span class="sym" aria-hidden="true">🔒</span><span class="nur-breit">Anmelden</span></button>
+<button type="button" class="eintrag an" id="abmelden" aria-label="Angemeldet – Abmelden" title="Angemeldet – Abmelden" hidden><span class="sym" aria-hidden="true">✓</span><span>Abmelden</span></button>
+</div>
+</div>
+</nav>
+<main>
+<h1 class="seitentitel">Simulationen</h1>
+<div id="karten">
+<article class="karte glas" data-id="elektronenablenkroehre">
+<button type="button" class="karte-flaeche" data-oeffnen="elektronenablenkroehre" aria-haspopup="dialog" aria-labelledby="titel-elektronenablenkroehre" aria-describedby="meta-elektronenablenkroehre">
+<span class="kachel" aria-hidden="true"><svg id="kachel-elektronenablenkroehre" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" role="img" aria-label="Elektronenablenkröhre">
+<defs><linearGradient id="elektronenablenkroehre-hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--art1, #1c2744)"/><stop offset="1" style="stop-color:var(--art2, #101727)"/></linearGradient></defs>
+<rect width="200" height="130" fill="url(#elektronenablenkroehre-hg)"/>
+<g style="fill:var(--mut, #9aa3b8)" opacity=".55"><rect x="14" y="58" width="32" height="14" rx="3"/><rect x="46" y="61" width="6" height="8" rx="1"/></g>
+<line x1="186" y1="12" x2="186" y2="118" style="stroke:var(--mut, #9aa3b8)" stroke-opacity=".4" stroke-width="2" stroke-linecap="round"/>
+<rect x="74" y="30" width="76" height="5" rx="2" fill="#e5484d"/><rect x="74" y="95" width="76" height="5" rx="2" fill="#3e7bfa"/>
+<g stroke="#a78bfa" fill="#a78bfa" stroke-width="1.3" opacity=".75"><line x1="90" y1="38" x2="90" y2="88"/><path d="M87 86 L90 92 L93 86 Z" stroke="none"/><line x1="112" y1="38" x2="112" y2="88"/><path d="M109 86 L112 92 L115 86 Z" stroke="none"/><line x1="134" y1="38" x2="134" y2="88"/><path d="M131 86 L134 92 L137 86 Z" stroke="none"/></g>
+<path d="M52 65 L74 65 L76 64.99 L78 64.94 L80 64.88 L82 64.78 L84 64.65 L86 64.5 L88 64.32 L90 64.11 L92 63.88 L94 63.61 L96 63.32 L98 63.01 L100 62.66 L102 62.29 L104 61.88 L106 61.45 L108 61 L110 60.51 L112 60 L114 59.46 L116 58.89 L118 58.3 L120 57.67 L122 57.02 L124 56.34 L126 55.64 L128 54.9 L130 54.14 L132 53.35 L134 52.53 L136 51.69 L138 50.82 L140 49.92 L142 48.99 L144 48.03 L146 47.05 L148 46.04 L150 45 L184 27.11" fill="none" stroke="#34d3ff" stroke-width="9" stroke-opacity=".18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M52 65 L74 65 L76 64.99 L78 64.94 L80 64.88 L82 64.78 L84 64.65 L86 64.5 L88 64.32 L90 64.11 L92 63.88 L94 63.61 L96 63.32 L98 63.01 L100 62.66 L102 62.29 L104 61.88 L106 61.45 L108 61 L110 60.51 L112 60 L114 59.46 L116 58.89 L118 58.3 L120 57.67 L122 57.02 L124 56.34 L126 55.64 L128 54.9 L130 54.14 L132 53.35 L134 52.53 L136 51.69 L138 50.82 L140 49.92 L142 48.99 L144 48.03 L146 47.05 L148 46.04 L150 45 L184 27.11" fill="none" stroke="#34d3ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="184" cy="27.11" r="4" fill="#34d3ff"/><circle cx="184" cy="27.11" r="1.8" fill="#e6fbff"/>
+</svg></span>
+<span class="info"><span class="meta" id="meta-elektronenablenkroehre"><span>Ph 12 · Elektrisches Feld</span> <span class="marke marke-neu">Neu</span></span>
+<span class="tt" id="titel-elektronenablenkroehre">Elektronenablenkröhre</span></span>
+<span class="pfeil" aria-hidden="true">›</span>
+</button>
+</article>
+<article class="karte glas" data-id="1hz-schwingkreis">
+<button type="button" class="karte-flaeche" data-oeffnen="1hz-schwingkreis" aria-haspopup="dialog" aria-labelledby="titel-1hz-schwingkreis" aria-describedby="meta-1hz-schwingkreis">
+<span class="kachel" aria-hidden="true"><svg id="kachel-1hz-schwingkreis" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" role="img" aria-label="1-Hz-Schwingkreis">
+<defs><linearGradient id="1hz-schwingkreis-hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--art1, #1c2744)"/><stop offset="1" style="stop-color:var(--art2, #101727)"/></linearGradient></defs>
+<rect width="200" height="130" fill="url(#1hz-schwingkreis-hg)"/>
+<g fill="none" style="stroke:var(--mut, #9aa3b8)" stroke-opacity=".7" stroke-width="2.5" stroke-linejoin="round"><path d="M30 58 V28 H72 M30 72 V102 H72"/><path d="M72 28 V38 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 a6 3.5 0 0 1 0 7 V102"/></g>
+<path d="M17 58 H43 M17 72 H43" fill="none" style="stroke:var(--mut, #9aa3b8)" stroke-width="3.5"/>
+<line x1="94" y1="65" x2="196" y2="65" style="stroke:var(--mut, #9aa3b8)" stroke-opacity=".35"/>
+<path d="M98 33 L99 33.56 L100 34.98 L101 37.19 L102 40.15 L103 43.76 L104 47.91 L105 52.5 L106 57.39 L107 62.45 L108 67.54 L109 72.52 L110 77.25 L111 81.62 L112 85.49 L113 88.78 L114 91.4 L115 93.28 L116 94.37 L117 94.66 L118 94.14 L119 92.83 L120 90.77 L121 88.03 L122 84.69 L123 80.84 L124 76.58 L125 72.05 L126 67.36 L127 62.65 L128 58.03 L129 53.64 L130 49.6 L131 46.01 L132 42.96 L133 40.53 L134 38.79 L135 37.78 L136 37.51 L137 38 L138 39.21 L139 41.11 L140 43.65 L141 46.75 L142 50.32 L143 54.26 L144 58.46 L145 62.81 L146 67.18 L147 71.46 L148 75.52 L149 79.27 L150 82.6 L151 85.43 L152 87.68 L153 89.29 L154 90.23 L155 90.48 L156 90.03 L157 88.9 L158 87.14 L159 84.79 L160 81.91 L161 78.6 L162 74.95 L163 71.06 L164 67.03 L165 62.98 L166 59.02 L167 55.25 L168 51.77 L169 48.69 L170 46.07 L171 43.98 L172 42.49 L173 41.62 L174 41.39 L175 41.8 L176 42.85 L177 44.48 L178 46.66 L179 49.32 L180 52.39 L181 55.78 L182 59.39 L183 63.12 L184 66.87 L185 70.55 L186 74.04 L187 77.26 L188 80.12 L189 82.55 L190 84.48 L191 85.86 L192 86.67 L193 86.88 L194 86.5" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></span>
+<span class="info"><span class="meta" id="meta-1hz-schwingkreis"><span>Ph 12 · Elektromagnetische Schwingungen</span> <span class="marke marke-neu">Neu</span></span>
+<span class="tt" id="titel-1hz-schwingkreis">1-Hz-Schwingkreis</span></span>
+<span class="pfeil" aria-hidden="true">›</span>
+</button>
+</article>
+<article class="karte glas" data-id="franck-hertz">
+<button type="button" class="karte-flaeche" data-oeffnen="franck-hertz" aria-haspopup="dialog" aria-labelledby="titel-franck-hertz" aria-describedby="meta-franck-hertz">
+<span class="kachel" aria-hidden="true"><svg id="kachel-franck-hertz" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" role="img" aria-label="Franck-Hertz-Versuch">
+<defs><linearGradient id="franck-hertz-hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--art1, #1c2744)"/><stop offset="1" style="stop-color:var(--art2, #101727)"/></linearGradient></defs>
+<rect width="200" height="130" fill="url(#franck-hertz-hg)"/>
+<g style="stroke:var(--mut, #9aa3b8)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".7"><path d="M30 14 L30 112 L188 112"/><path d="M27 19 L30 13 L33 19"/><path d="M183 109 L189 112 L183 115"/></g>
+<g style="stroke:var(--mut, #9aa3b8)" stroke-width="1" stroke-dasharray="3 3" opacity=".45"><line x1="61.8" y1="98.9" x2="61.8" y2="112"/><line x1="87.3" y1="85.4" x2="87.3" y2="112"/><line x1="112.8" y1="70.1" x2="112.8" y2="112"/><line x1="138.3" y1="52.8" x2="138.3" y2="112"/><line x1="163.7" y1="33.8" x2="163.7" y2="112"/></g>
+<path d="M30.0 112.0 L30.5 112.0 L31.0 112.0 L31.6 112.0 L32.1 112.0 L32.6 112.0 L33.1 112.0 L33.6 112.0 L34.2 112.0 L34.7 112.0 L35.2 112.0 L35.7 112.0 L36.2 112.0 L36.8 112.0 L37.3 112.0 L37.8 112.0 L38.3 112.0 L38.8 112.0 L39.4 112.0 L39.9 112.0 L40.4 112.0 L40.9 111.6 L41.4 111.6 L42.0 111.6 L42.5 111.5 L43.0 111.5 L43.5 111.4 L44.0 111.4 L44.6 111.3 L45.1 111.2 L45.6 111.2 L46.1 111.1 L46.6 111.0 L47.2 110.9 L47.7 110.8 L48.2 110.7 L48.7 110.6 L49.2 110.4 L49.8 110.3 L50.3 110.1 L50.8 110.0 L51.3 109.8 L51.8 109.6 L52.4 109.4 L52.9 109.2 L53.4 109.0 L53.9 108.7 L54.4 108.5 L55.0 108.2 L55.5 107.9 L56.0 107.6 L56.5 107.3 L57.0 107.0 L57.6 106.6 L58.1 106.2 L58.6 105.8 L59.1 105.4 L59.6 105.0 L60.2 104.5 L60.7 104.0 L61.2 103.5 L61.7 103.0 L62.2 103.2 L62.8 103.7 L63.3 104.2 L63.8 104.8 L64.3 105.4 L64.8 106.1 L65.4 106.8 L65.9 107.6 L66.4 108.4 L66.9 108.3 L67.4 108.2 L68.0 108.0 L68.5 107.9 L69.0 107.7 L69.5 107.5 L70.0 107.3 L70.6 107.1 L71.1 106.8 L71.6 106.6 L72.1 106.3 L72.6 106.0 L73.2 105.7 L73.7 105.3 L74.2 105.0 L74.7 104.6 L75.2 104.2 L75.8 103.8 L76.3 103.4 L76.8 103.0 L77.3 102.5 L77.8 102.0 L78.4 101.5 L78.9 101.0 L79.4 100.5 L79.9 99.9 L80.4 99.3 L81.0 98.7 L81.5 98.1 L82.0 97.4 L82.5 96.7 L83.0 96.0 L83.6 95.3 L84.1 94.5 L84.6 93.8 L85.1 93.0 L85.6 92.2 L86.2 91.3 L86.7 90.4 L87.2 89.5 L87.7 90.6 L88.2 92.2 L88.8 93.8 L89.3 95.5 L89.8 97.2 L90.3 98.9 L90.8 100.7 L91.4 102.5 L91.9 104.4 L92.4 104.3 L92.9 104.1 L93.4 103.9 L94.0 103.6 L94.5 103.3 L95.0 103.0 L95.5 102.6 L96.0 102.3 L96.6 101.8 L97.1 101.4 L97.6 100.9 L98.1 100.4 L98.6 99.9 L99.2 99.3 L99.7 98.8 L100.2 98.2 L100.7 97.5 L101.2 96.8 L101.8 96.1 L102.3 95.4 L102.8 94.7 L103.3 93.9 L103.8 93.1 L104.4 92.2 L104.9 91.3 L105.4 90.4 L105.9 89.5 L106.4 88.5 L107.0 87.5 L107.5 86.5 L108.0 85.4 L108.5 84.3 L109.0 83.2 L109.6 82.0 L110.1 80.8 L110.6 79.6 L111.1 78.4 L111.6 77.1 L112.2 75.7 L112.7 74.4 L113.2 76.3 L113.7 79.1 L114.2 81.9 L114.8 84.7 L115.3 87.6 L115.8 90.6 L116.3 93.6 L116.8 96.6 L117.4 99.7 L117.9 99.6 L118.4 99.3 L118.9 99.0 L119.4 98.6 L120.0 98.2 L120.5 97.7 L121.0 97.2 L121.5 96.6 L122.0 96.0 L122.6 95.4 L123.1 94.7 L123.6 93.9 L124.1 93.2 L124.6 92.4 L125.2 91.5 L125.7 90.6 L126.2 89.7 L126.7 88.7 L127.2 87.7 L127.8 86.7 L128.3 85.6 L128.8 84.5 L129.3 83.3 L129.8 82.1 L130.4 80.9 L130.9 79.6 L131.4 78.2 L131.9 76.9 L132.4 75.5 L133.0 74.0 L133.5 72.5 L134.0 71.0 L134.5 69.4 L135.0 67.8 L135.6 66.1 L136.1 64.4 L136.6 62.7 L137.1 60.9 L137.6 59.1 L138.2 57.2 L138.7 60.1 L139.2 64.2 L139.7 68.4 L140.2 72.6 L140.8 76.8 L141.3 81.1 L141.8 85.5 L142.3 90.0 L142.8 94.5 L143.4 94.2 L143.9 93.9 L144.4 93.5 L144.9 93.0 L145.4 92.4 L146.0 91.8 L146.5 91.1 L147.0 90.3 L147.5 89.5 L148.0 88.6 L148.6 87.7 L149.1 86.7 L149.6 85.7 L150.1 84.6 L150.6 83.5 L151.2 82.3 L151.7 81.0 L152.2 79.7 L152.7 78.4 L153.2 77.0 L153.8 75.5 L154.3 74.1 L154.8 72.5 L155.3 70.9 L155.8 69.3 L156.4 67.6 L156.9 65.8 L157.4 64.0 L157.9 62.1 L158.4 60.2 L159.0 58.3 L159.5 56.3 L160.0 54.2 L160.5 52.1 L161.0 49.9 L161.6 47.7 L162.1 45.4 L162.6 43.1 L163.1 40.7 L163.6 38.3 L164.2 42.4 L164.7 47.9 L165.2 53.6 L165.7 59.2 L166.2 65.0 L166.8 70.8 L167.3 76.7 L167.8 82.7 L168.3 88.7 L168.8 88.4 L169.4 88.0 L169.9 87.4 L170.4 86.8 L170.9 86.1 L171.4 85.3 L172.0 84.4 L172.5 83.4 L173.0 82.4 L173.5 81.2 L174.0 80.1 L174.6 78.8 L175.1 77.5 L175.6 76.1 L176.1 74.7 L176.6 73.2 L177.2 71.6 L177.7 69.9 L178.2 68.2 L178.7 66.5 L179.2 64.6 L179.8 62.7 L180.3 60.8 L180.8 58.8 L181.3 56.7 L181.8 54.5 L182.4 52.3 L182.9 50.0 L183.4 47.7 L183.9 45.3 L184.4 42.9 L185.0 40.3 L185.5 37.7 L186.0 35.1" fill="none" stroke="#34d3ff" stroke-width="8" stroke-opacity=".18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M30.0 112.0 L30.5 112.0 L31.0 112.0 L31.6 112.0 L32.1 112.0 L32.6 112.0 L33.1 112.0 L33.6 112.0 L34.2 112.0 L34.7 112.0 L35.2 112.0 L35.7 112.0 L36.2 112.0 L36.8 112.0 L37.3 112.0 L37.8 112.0 L38.3 112.0 L38.8 112.0 L39.4 112.0 L39.9 112.0 L40.4 112.0 L40.9 111.6 L41.4 111.6 L42.0 111.6 L42.5 111.5 L43.0 111.5 L43.5 111.4 L44.0 111.4 L44.6 111.3 L45.1 111.2 L45.6 111.2 L46.1 111.1 L46.6 111.0 L47.2 110.9 L47.7 110.8 L48.2 110.7 L48.7 110.6 L49.2 110.4 L49.8 110.3 L50.3 110.1 L50.8 110.0 L51.3 109.8 L51.8 109.6 L52.4 109.4 L52.9 109.2 L53.4 109.0 L53.9 108.7 L54.4 108.5 L55.0 108.2 L55.5 107.9 L56.0 107.6 L56.5 107.3 L57.0 107.0 L57.6 106.6 L58.1 106.2 L58.6 105.8 L59.1 105.4 L59.6 105.0 L60.2 104.5 L60.7 104.0 L61.2 103.5 L61.7 103.0 L62.2 103.2 L62.8 103.7 L63.3 104.2 L63.8 104.8 L64.3 105.4 L64.8 106.1 L65.4 106.8 L65.9 107.6 L66.4 108.4 L66.9 108.3 L67.4 108.2 L68.0 108.0 L68.5 107.9 L69.0 107.7 L69.5 107.5 L70.0 107.3 L70.6 107.1 L71.1 106.8 L71.6 106.6 L72.1 106.3 L72.6 106.0 L73.2 105.7 L73.7 105.3 L74.2 105.0 L74.7 104.6 L75.2 104.2 L75.8 103.8 L76.3 103.4 L76.8 103.0 L77.3 102.5 L77.8 102.0 L78.4 101.5 L78.9 101.0 L79.4 100.5 L79.9 99.9 L80.4 99.3 L81.0 98.7 L81.5 98.1 L82.0 97.4 L82.5 96.7 L83.0 96.0 L83.6 95.3 L84.1 94.5 L84.6 93.8 L85.1 93.0 L85.6 92.2 L86.2 91.3 L86.7 90.4 L87.2 89.5 L87.7 90.6 L88.2 92.2 L88.8 93.8 L89.3 95.5 L89.8 97.2 L90.3 98.9 L90.8 100.7 L91.4 102.5 L91.9 104.4 L92.4 104.3 L92.9 104.1 L93.4 103.9 L94.0 103.6 L94.5 103.3 L95.0 103.0 L95.5 102.6 L96.0 102.3 L96.6 101.8 L97.1 101.4 L97.6 100.9 L98.1 100.4 L98.6 99.9 L99.2 99.3 L99.7 98.8 L100.2 98.2 L100.7 97.5 L101.2 96.8 L101.8 96.1 L102.3 95.4 L102.8 94.7 L103.3 93.9 L103.8 93.1 L104.4 92.2 L104.9 91.3 L105.4 90.4 L105.9 89.5 L106.4 88.5 L107.0 87.5 L107.5 86.5 L108.0 85.4 L108.5 84.3 L109.0 83.2 L109.6 82.0 L110.1 80.8 L110.6 79.6 L111.1 78.4 L111.6 77.1 L112.2 75.7 L112.7 74.4 L113.2 76.3 L113.7 79.1 L114.2 81.9 L114.8 84.7 L115.3 87.6 L115.8 90.6 L116.3 93.6 L116.8 96.6 L117.4 99.7 L117.9 99.6 L118.4 99.3 L118.9 99.0 L119.4 98.6 L120.0 98.2 L120.5 97.7 L121.0 97.2 L121.5 96.6 L122.0 96.0 L122.6 95.4 L123.1 94.7 L123.6 93.9 L124.1 93.2 L124.6 92.4 L125.2 91.5 L125.7 90.6 L126.2 89.7 L126.7 88.7 L127.2 87.7 L127.8 86.7 L128.3 85.6 L128.8 84.5 L129.3 83.3 L129.8 82.1 L130.4 80.9 L130.9 79.6 L131.4 78.2 L131.9 76.9 L132.4 75.5 L133.0 74.0 L133.5 72.5 L134.0 71.0 L134.5 69.4 L135.0 67.8 L135.6 66.1 L136.1 64.4 L136.6 62.7 L137.1 60.9 L137.6 59.1 L138.2 57.2 L138.7 60.1 L139.2 64.2 L139.7 68.4 L140.2 72.6 L140.8 76.8 L141.3 81.1 L141.8 85.5 L142.3 90.0 L142.8 94.5 L143.4 94.2 L143.9 93.9 L144.4 93.5 L144.9 93.0 L145.4 92.4 L146.0 91.8 L146.5 91.1 L147.0 90.3 L147.5 89.5 L148.0 88.6 L148.6 87.7 L149.1 86.7 L149.6 85.7 L150.1 84.6 L150.6 83.5 L151.2 82.3 L151.7 81.0 L152.2 79.7 L152.7 78.4 L153.2 77.0 L153.8 75.5 L154.3 74.1 L154.8 72.5 L155.3 70.9 L155.8 69.3 L156.4 67.6 L156.9 65.8 L157.4 64.0 L157.9 62.1 L158.4 60.2 L159.0 58.3 L159.5 56.3 L160.0 54.2 L160.5 52.1 L161.0 49.9 L161.6 47.7 L162.1 45.4 L162.6 43.1 L163.1 40.7 L163.6 38.3 L164.2 42.4 L164.7 47.9 L165.2 53.6 L165.7 59.2 L166.2 65.0 L166.8 70.8 L167.3 76.7 L167.8 82.7 L168.3 88.7 L168.8 88.4 L169.4 88.0 L169.9 87.4 L170.4 86.8 L170.9 86.1 L171.4 85.3 L172.0 84.4 L172.5 83.4 L173.0 82.4 L173.5 81.2 L174.0 80.1 L174.6 78.8 L175.1 77.5 L175.6 76.1 L176.1 74.7 L176.6 73.2 L177.2 71.6 L177.7 69.9 L178.2 68.2 L178.7 66.5 L179.2 64.6 L179.8 62.7 L180.3 60.8 L180.8 58.8 L181.3 56.7 L181.8 54.5 L182.4 52.3 L182.9 50.0 L183.4 47.7 L183.9 45.3 L184.4 42.9 L185.0 40.3 L185.5 37.7 L186.0 35.1" fill="none" stroke="#34d3ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg></span>
+<span class="info"><span class="meta" id="meta-franck-hertz"><span>Ph 13 · Atomphysik</span> <span class="marke marke-neu">Neu</span></span>
+<span class="tt" id="titel-franck-hertz">Franck-Hertz-Versuch</span></span>
+<span class="pfeil" aria-hidden="true">›</span>
+</button>
+</article>
+<article class="karte glas werkzeug" data-werkzeug="stroboskop">
+<a class="karte-flaeche" href="https://betzkilian-dot.github.io/stroboskop/" target="_blank" rel="noopener" aria-labelledby="titel-werkzeug-stroboskop">
+<span class="kachel" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 130" role="img" aria-label="Stroboskop-App">
+<defs><linearGradient id="stroboskop-hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--art1, #1c2744)"/><stop offset="1" style="stop-color:var(--art2, #101727)"/></linearGradient></defs>
+<rect width="200" height="130" fill="url(#stroboskop-hg)"/>
+<g fill="#f59e0b"><circle cx="24" cy="30" r="7" opacity="0.35"/><circle cx="52" cy="33" r="7" opacity="0.48"/><circle cx="80" cy="42" r="7" opacity="0.61"/><circle cx="108" cy="57" r="7" opacity="0.74"/><circle cx="136" cy="78" r="7" opacity="0.87"/><circle cx="164" cy="105" r="7" opacity="1"/></g>
+</svg></span>
+<span class="info"><span class="meta"><span>Werkzeug</span></span>
+<span class="tt" id="titel-werkzeug-stroboskop">Stroboskop-App</span>
+<span class="karte-hinweis" aria-hidden="true">Öffnen ↗</span></span>
+</a>
+</article>
+</div>
+<div id="leer-hinweis" class="glas" hidden>
+<p>Keine Versuche für diese Auswahl</p>
+<button type="button" class="knopf primaer" id="filter-zuruecksetzen">Filter zurücksetzen</button>
+</div>
+<footer class="fuss"><span id="stand">Stand: 25.11.2026</span></footer>
+</main>
+</div>
+
+<div id="schleier" hidden></div>
+<section id="blatt" class="glas" role="dialog" aria-modal="true" aria-labelledby="blatt-titel" aria-describedby="blatt-text" tabindex="-1" hidden>
+<div class="griff" aria-hidden="true"></div>
+<div class="blatt-kopf">
+<div class="mini" aria-hidden="true"><svg viewBox="0 0 200 130" focusable="false"><use width="200" height="130"/></svg></div>
+<div class="blatt-titelblock"><p class="meta" id="blatt-meta"></p><h2 id="blatt-titel"></h2></div>
+<button type="button" class="zu glas2" id="blatt-zu" aria-label="Schließen">✕</button>
+</div>
+<p class="kurztext" id="blatt-text"></p>
+<div class="segment glas2" id="blatt-niveau" role="group" aria-label="Niveau" hidden></div>
+<div class="aktionen" id="blatt-aktionen"></div>
+</section>
+
+<dialog id="anmelde-dialog" class="glas" aria-labelledby="anmelde-titel">
+<form id="anmelde-formular" novalidate>
+<h2 id="anmelde-titel">Anmeldung für Lehrkräfte</h2>
+<label>Passwort
+<input type="password" id="passwort" name="passwort" autocomplete="current-password" required>
+</label>
+<label class="haken"><input type="checkbox" id="angemeldet-bleiben" checked> Auf diesem Gerät angemeldet bleiben</label>
+<p id="anmelde-meldung" role="alert"></p>
+<div class="dialog-knoepfe">
+<button type="button" class="knopf" id="anmelden-abbrechen">Abbrechen</button>
+<button type="submit" class="knopf primaer" id="anmelden-los">Anmelden</button>
+</div>
+</form>
+</dialog>
+
+<div id="qr-ebene" role="dialog" aria-modal="true" aria-labelledby="qr-titel" tabindex="-1" hidden>
+<div class="qr-code"></div>
+<p id="qr-titel"></p>
+<p class="qr-adresse"></p>
+<p class="qr-hinweis">Tippen oder Esc zum Schließen</p>
+</div>
+
+<script type="application/json" id="katalog">{"basisAdresse":"https://betzkilian-dot.github.io/physik-simulationen/","salz":"7FvxuN7Mpb7g6vfmHyjWbg==","iterationen":600000,"stand":"2026-11-25","werkzeuge":[{"id":"stroboskop","titel":"Stroboskop-App","kurztext":"Erstellt Stroboskopbilder aus eigenen Videos direkt auf dem iPad.","adresse":"https://betzkilian-dot.github.io/stroboskop/"}],"versuche":[{"id":"elektronenablenkroehre","titel":"Elektronenablenkröhre","kurztext":"Elektronen fliegen durch das elektrische Feld eines Plattenkondensators und werden auf einer Parabelbahn abgelenkt.","jahrgang":["Ph 12"],"thema":"Elektrisches Feld","niveau":["eA","gA"],"marke":"neu","simulationen":[{"label":"eA","href":"sim/elektronenablenkroehre.html","qr":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 41 41\" shape-rendering=\"crispEdges\"><path fill=\"none\" d=\"M0 0h41v41H0z\"/><path stroke=\"currentColor\" d=\"M2 2.5h7m2 0h8m1 0h3m2 0h1m1 0h1m2 0h1m1 0h7M2 3.5h1m5 0h1m2 0h1m3 0h4m1 0h1m1 0h2m2 0h1m2 0h2m1 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h3m3 0h1m1 0h4m2 0h3m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h1m1 0h2m2 0h1m2 0h1m2 0h1m1 0h6m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h2m3 0h11m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m1 0h3m1 0h2m1 0h2m1 0h1m1 0h2m4 0h2m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h2m1 0h2m1 0h1m3 0h6m3 0h2M2 10.5h1m1 0h5m2 0h3m1 0h1m3 0h1m1 0h1m2 0h1m1 0h3m3 0h5M3 11.5h2m1 0h2m5 0h5m1 0h1m1 0h3m1 0h1m4 0h1m2 0h1m2 0h2M3 12.5h1m3 0h2m2 0h1m2 0h1m1 0h2m2 0h1m1 0h3m4 0h2m1 0h2m1 0h1m1 0h2M2 13.5h3m2 0h1m2 0h1m1 0h7m1 0h4m4 0h1m1 0h1m2 0h1m4 0h1M3 14.5h1m1 0h6m2 0h1m2 0h1m2 0h1m1 0h1m2 0h1m1 0h3m2 0h2m1 0h5M2 15.5h1m2 0h3m3 0h2m1 0h1m3 0h1m2 0h1m1 0h1m1 0h1m4 0h1m2 0h1M2 16.5h3m2 0h2m1 0h2m1 0h2m2 0h4m1 0h1m3 0h1m1 0h4m1 0h3m1 0h2M3 17.5h1m1 0h2m2 0h2m1 0h4m4 0h4m1 0h1m2 0h2m3 0h2m2 0h2M6 18.5h1m1 0h1m1 0h3m3 0h2m1 0h1m1 0h1m2 0h5m3 0h1m1 0h1m1 0h3M2 19.5h3m2 0h1m2 0h3m2 0h1m2 0h5m2 0h1m1 0h1m5 0h1m1 0h1m1 0h1M4 20.5h1m3 0h1m1 0h2m3 0h1m1 0h2m1 0h1m2 0h1m2 0h7m1 0h1m2 0h2M2 21.5h1m1 0h4m3 0h1m1 0h6m2 0h1m1 0h1m1 0h1m3 0h6m3 0h1M3 22.5h1m3 0h5m1 0h1m1 0h1m2 0h2m4 0h4m3 0h2m1 0h1m1 0h1M2 23.5h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m2 0h2m1 0h4m2 0h2m3 0h1m1 0h1M2 24.5h2m2 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h2m3 0h3m1 0h2m1 0h3m1 0h3m1 0h2M2 25.5h3m1 0h2m3 0h1m2 0h5m4 0h1m4 0h1m2 0h1m1 0h2m2 0h2M2 26.5h3m3 0h2m4 0h1m1 0h1m2 0h4m1 0h1m1 0h3m2 0h2m1 0h1m1 0h2M2 27.5h4m1 0h1m1 0h3m2 0h1m1 0h1m1 0h1m1 0h4m1 0h1m1 0h2m1 0h2m1 0h1M2 28.5h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h2m1 0h3m3 0h8m1 0h2M2 29.5h1m3 0h1m2 0h1m4 0h2m1 0h2m2 0h1m1 0h3m2 0h2m2 0h3m3 0h1M2 30.5h1m1 0h3m1 0h1m1 0h2m1 0h5m1 0h1m1 0h1m2 0h2m1 0h2m1 0h9M10 31.5h1m1 0h1m1 0h1m1 0h1m2 0h5m1 0h1m3 0h2m3 0h2M2 32.5h7m3 0h8m3 0h2m3 0h1m1 0h1m1 0h1m1 0h1m1 0h3M2 33.5h1m5 0h1m1 0h1m1 0h1m2 0h1m4 0h6m4 0h1m3 0h2m1 0h2M2 34.5h1m1 0h3m1 0h1m1 0h3m2 0h2m1 0h2m1 0h1m2 0h11m1 0h1M2 35.5h1m1 0h3m1 0h1m1 0h5m3 0h6m1 0h1m2 0h5m1 0h5M2 36.5h1m1 0h3m1 0h1m1 0h1m5 0h2m2 0h1m5 0h1m1 0h4m5 0h2M2 37.5h1m5 0h1m2 0h1m5 0h1m3 0h3m1 0h2m2 0h2m1 0h1m1 0h1m3 0h1M2 38.5h7m1 0h2m1 0h2m1 0h1m2 0h1m1 0h1m4 0h3m2 0h1m2 0h5\"/><\/svg>\n","niveau":"eA"},{"label":"gA","href":"sim/elektronenablenkroehre-ga.html","qr":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 45 45\" shape-rendering=\"crispEdges\"><path fill=\"none\" d=\"M0 0h45v45H0z\"/><path stroke=\"currentColor\" d=\"M2 2.5h7m1 0h1m4 0h1m2 0h2m1 0h3m1 0h1m1 0h1m2 0h1m2 0h2m1 0h7M2 3.5h1m5 0h1m1 0h3m1 0h2m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m3 0h1m2 0h1m1 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m2 0h3m1 0h2m1 0h2m1 0h1m3 0h2m2 0h1m2 0h3m1 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h3m2 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m2 0h5m3 0h1m1 0h1m1 0h2m1 0h8m2 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m3 0h1m2 0h1m2 0h4m5 0h1m3 0h1m1 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h1m3 0h2m2 0h4m2 0h3m3 0h2m2 0h1M2 10.5h1m1 0h2m1 0h3m2 0h1m2 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h5m3 0h1m2 0h1m1 0h2M3 11.5h2m1 0h2m2 0h2m1 0h6m1 0h4m1 0h2m3 0h9m1 0h3M3 12.5h1m1 0h1m1 0h3m3 0h2m3 0h3m1 0h1m2 0h1m1 0h2m1 0h2m3 0h1m4 0h2M5 13.5h1m1 0h1m1 0h2m1 0h1m1 0h1m5 0h1m1 0h1m2 0h6m1 0h1m1 0h1m1 0h2m3 0h1M7 14.5h3m2 0h4m1 0h1m1 0h1m1 0h2m1 0h5m1 0h2m1 0h1m5 0h2M4 15.5h1m1 0h1m2 0h1m1 0h1m1 0h5m1 0h1m2 0h5m1 0h1m2 0h2m3 0h1m2 0h2m1 0h1M2 16.5h2m3 0h2m1 0h3m1 0h1m2 0h3m1 0h5m1 0h1m3 0h1m4 0h2m3 0h2M2 17.5h3m2 0h1m3 0h4m5 0h1m2 0h3m2 0h2m2 0h3m1 0h1m2 0h1m2 0h1M5 18.5h2m1 0h3m2 0h4m3 0h1m1 0h3m2 0h1m4 0h2m4 0h1M2 19.5h2m1 0h2m4 0h2m4 0h2m3 0h2m1 0h3m1 0h1m1 0h1m2 0h2m1 0h1m1 0h3M2 20.5h1m1 0h3m1 0h2m2 0h2m2 0h2m2 0h1m1 0h1m1 0h1m4 0h3m2 0h1m1 0h1m1 0h2M3 21.5h1m2 0h1m2 0h1m1 0h2m2 0h3m1 0h2m2 0h1m1 0h2m3 0h1m2 0h5m1 0h2M2 22.5h5m1 0h1m2 0h3m2 0h3m2 0h1m5 0h1m2 0h1m1 0h1m3 0h5M2 23.5h1m1 0h3m2 0h2m3 0h1m2 0h1m1 0h1m1 0h3m1 0h1m1 0h2m3 0h7m2 0h2M2 24.5h1m4 0h4m5 0h1m1 0h2m4 0h3m3 0h3m1 0h4m1 0h3M2 25.5h1m2 0h1m3 0h1m1 0h2m2 0h1m4 0h1m1 0h1m1 0h1m1 0h2m1 0h2m1 0h2m2 0h1m1 0h2m1 0h1M3 26.5h7m4 0h1m1 0h1m1 0h2m1 0h1m2 0h1m1 0h3m2 0h1m8 0h1M2 27.5h6m1 0h1m2 0h1m2 0h1m1 0h2m1 0h3m3 0h9m1 0h1m2 0h2m1 0h1M3 28.5h1m2 0h1m1 0h1m1 0h3m1 0h3m1 0h4m4 0h2m2 0h2m1 0h3m1 0h3m1 0h2M3 29.5h3m3 0h1m2 0h1m1 0h1m5 0h1m1 0h2m2 0h1m1 0h1m4 0h2m2 0h1m1 0h1M2 30.5h1m1 0h1m1 0h1m1 0h2m3 0h1m2 0h1m5 0h6m1 0h1m2 0h4m1 0h3m1 0h2M5 31.5h3m1 0h2m1 0h2m1 0h1m1 0h1m3 0h2m1 0h1m2 0h1m3 0h1m1 0h1m3 0h1m1 0h1m1 0h1M2 32.5h1m3 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h1m5 0h1m3 0h1m3 0h2m3 0h1M5 33.5h3m1 0h1m5 0h1m1 0h1m1 0h3m3 0h1m2 0h5m3 0h1m1 0h1m1 0h3M3 34.5h3m1 0h3m1 0h2m3 0h1m1 0h2m3 0h1m4 0h5m1 0h8M10 35.5h1m1 0h1m1 0h1m2 0h1m1 0h5m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m3 0h5M2 36.5h7m1 0h1m1 0h2m1 0h1m1 0h1m2 0h1m4 0h1m1 0h1m3 0h1m1 0h2m1 0h1m1 0h4M2 37.5h1m5 0h1m1 0h1m4 0h2m1 0h2m2 0h1m3 0h1m2 0h1m2 0h1m1 0h1m3 0h2m2 0h1M2 38.5h1m1 0h3m1 0h1m4 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m3 0h1m1 0h5m1 0h1M2 39.5h1m1 0h3m1 0h1m1 0h3m6 0h1m1 0h1m1 0h2m1 0h9m3 0h2m1 0h1M2 40.5h1m1 0h3m1 0h1m1 0h1m2 0h3m4 0h4m2 0h2m4 0h1m4 0h1m1 0h4M2 41.5h1m5 0h1m3 0h1m2 0h5m3 0h2m3 0h2m2 0h3m1 0h1m1 0h2m1 0h1M2 42.5h7m1 0h1m2 0h1m1 0h5m1 0h1m1 0h2m2 0h1m1 0h2m1 0h5m4 0h1\"/><\/svg>\n","niveau":"gA"}],"arbeitsblaetter":[{"label":"Arbeitsblatt eA","dateien":[{"name":"elektronenablenkroehre-ea.pdf","href":"ab/elektronenablenkroehre-ea.pdf"},{"name":"elektronenablenkroehre-ea-hilfen.pdf","href":"ab/elektronenablenkroehre-ea-hilfen.pdf"}],"niveau":"eA"},{"label":"Arbeitsblatt gA","dateien":[{"name":"elektronenablenkroehre-ga.pdf","href":"ab/elektronenablenkroehre-ga.pdf"},{"name":"elektronenablenkroehre-ga-hilfen.pdf","href":"ab/elektronenablenkroehre-ga-hilfen.pdf"}],"niveau":"gA"}]},{"id":"1hz-schwingkreis","titel":"1-Hz-Schwingkreis","kurztext":"Ein Schwingkreis aus Kondensator und großer Spule schwingt so langsam, dass man Spannung und Strom mitverfolgen kann.","jahrgang":["Ph 12"],"thema":"Elektromagnetische Schwingungen","niveau":["eA","gA"],"marke":"neu","simulationen":[{"label":"Simulation","href":"sim/1hz-schwingkreis.html","qr":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 41 41\" shape-rendering=\"crispEdges\"><path fill=\"none\" d=\"M0 0h41v41H0z\"/><path stroke=\"currentColor\" d=\"M2 2.5h7m3 0h6m2 0h3m2 0h1m1 0h1m2 0h1m1 0h7M2 3.5h1m5 0h1m7 0h2m2 0h1m2 0h1m2 0h1m2 0h2m1 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m1 0h1m4 0h4m1 0h1m1 0h4m2 0h2m2 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h3m1 0h1m2 0h1m1 0h6m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m1 0h3m2 0h2m1 0h8m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m1 0h5m3 0h1m3 0h1m1 0h1m4 0h1m2 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h2m1 0h1m2 0h2m3 0h5m3 0h2M2 10.5h1m1 0h5m2 0h1m2 0h2m2 0h2m1 0h2m1 0h1m1 0h3m1 0h1m1 0h5M2 11.5h2m2 0h1m2 0h1m1 0h1m1 0h5m1 0h5m1 0h1m2 0h1m4 0h1m2 0h2M3 12.5h1m1 0h1m1 0h2m2 0h5m1 0h2m1 0h1m2 0h2m4 0h2m1 0h2m1 0h1m1 0h2M2 13.5h3m1 0h1m3 0h1m6 0h1m2 0h1m2 0h1m2 0h1m1 0h1m1 0h1m2 0h1m4 0h1M2 14.5h1m5 0h3m1 0h2m2 0h2m1 0h1m1 0h1m2 0h5m2 0h2m1 0h5M2 15.5h1m1 0h1m1 0h2m1 0h2m3 0h1m3 0h2m1 0h1m3 0h1m1 0h1m2 0h1m2 0h1M3 16.5h3m1 0h4m1 0h4m1 0h2m3 0h1m3 0h2m1 0h3m1 0h3m1 0h2M2 17.5h1m1 0h3m4 0h1m1 0h1m1 0h1m4 0h6m3 0h1m3 0h2m2 0h2M2 18.5h1m2 0h1m1 0h2m1 0h2m1 0h5m2 0h2m2 0h4m4 0h1m1 0h1m1 0h3M3 19.5h2m1 0h1m3 0h2m1 0h2m1 0h7m1 0h2m1 0h1m5 0h1m1 0h1m1 0h1M2 20.5h3m1 0h1m1 0h1m1 0h3m2 0h2m3 0h1m2 0h1m3 0h6m1 0h1m2 0h2M4 21.5h1m4 0h1m3 0h2m1 0h1m1 0h1m2 0h3m1 0h1m3 0h6m3 0h1M4 22.5h6m4 0h1m3 0h2m1 0h1m2 0h1m1 0h2m3 0h2m1 0h1m1 0h1M2 23.5h1m1 0h2m5 0h4m3 0h2m1 0h7m2 0h2m3 0h1m1 0h1M3 24.5h1m2 0h5m1 0h8m2 0h1m3 0h1m1 0h4m1 0h3m1 0h2M5 25.5h3m1 0h1m2 0h4m1 0h4m2 0h1m4 0h1m2 0h1m1 0h2m2 0h2M2 26.5h4m2 0h1m2 0h6m1 0h1m2 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h2M2 27.5h1m1 0h2m1 0h1m2 0h1m3 0h2m1 0h1m2 0h2m1 0h1m1 0h1m1 0h2m1 0h2m1 0h1M2 28.5h1m1 0h1m2 0h2m1 0h1m2 0h3m1 0h4m1 0h3m1 0h1m1 0h8m1 0h2M2 29.5h1m2 0h2m2 0h4m2 0h1m1 0h1m3 0h1m1 0h2m1 0h1m1 0h2m2 0h3M2 30.5h1m5 0h1m1 0h5m2 0h1m1 0h1m4 0h2m1 0h2m1 0h8M10 31.5h1m1 0h3m1 0h1m3 0h4m1 0h1m3 0h2m3 0h2M2 32.5h7m4 0h6m1 0h1m2 0h2m2 0h1m2 0h1m1 0h1m1 0h1m1 0h3M2 33.5h1m5 0h1m1 0h2m3 0h1m5 0h5m2 0h1m1 0h1m3 0h2m1 0h2M2 34.5h1m1 0h3m1 0h1m1 0h1m1 0h5m3 0h3m1 0h11m1 0h1M2 35.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m1 0h3m1 0h3m1 0h1m3 0h4m1 0h3m1 0h1M2 36.5h1m1 0h3m1 0h1m1 0h2m2 0h3m3 0h1m1 0h1m5 0h4m5 0h2M2 37.5h1m5 0h1m4 0h3m2 0h1m4 0h1m1 0h2m2 0h2m1 0h1m1 0h1m3 0h1M2 38.5h7m1 0h1m1 0h1m1 0h3m2 0h1m1 0h1m4 0h3m2 0h1m2 0h5\"/><\/svg>\n"}],"arbeitsblaetter":[{"label":"Arbeitsblatt eA","dateien":[{"name":"1hz-schwingkreis-ea.pdf","href":"ab/1hz-schwingkreis-ea.pdf"},{"name":"1hz-schwingkreis-ea-hilfen.pdf","href":"ab/1hz-schwingkreis-ea-hilfen.pdf"}],"niveau":"eA"},{"label":"Arbeitsblatt gA","dateien":[{"name":"1hz-schwingkreis-ga.pdf","href":"ab/1hz-schwingkreis-ga.pdf"},{"name":"1hz-schwingkreis-ga-hilfen.pdf","href":"ab/1hz-schwingkreis-ga-hilfen.pdf"}],"niveau":"gA"}]},{"id":"franck-hertz","titel":"Franck-Hertz-Versuch","kurztext":"Elektronen geben ihre Energie bei Stößen mit Quecksilberatomen nur in festen Portionen ab – die Maxima im Anodenstrom liegen in gleichen Abständen.","jahrgang":["Ph 13"],"thema":"Atomphysik","niveau":["eA","gA"],"marke":"neu","simulationen":[{"label":"Simulation","href":"sim/franck-hertz.html","qr":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 41 41\" shape-rendering=\"crispEdges\"><path fill=\"none\" d=\"M0 0h41v41H0z\"/><path stroke=\"currentColor\" d=\"M2 2.5h7m1 0h1m1 0h1m3 0h2m6 0h2m1 0h2m1 0h1m1 0h7M2 3.5h1m5 0h1m1 0h1m1 0h2m1 0h1m1 0h3m5 0h1m2 0h1m3 0h1m5 0h1M2 4.5h1m1 0h3m1 0h1m3 0h3m3 0h1m2 0h1m3 0h1m1 0h3m2 0h1m1 0h3m1 0h1M2 5.5h1m1 0h3m1 0h1m1 0h3m6 0h1m2 0h1m1 0h1m1 0h4m2 0h1m1 0h3m1 0h1M2 6.5h1m1 0h3m1 0h1m2 0h1m1 0h3m2 0h1m2 0h1m2 0h1m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1M2 7.5h1m5 0h1m4 0h1m5 0h4m3 0h1m3 0h1m1 0h1m5 0h1M2 8.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M10 9.5h1m1 0h1m2 0h1m1 0h2m2 0h1m4 0h1m1 0h1m1 0h1M2 10.5h1m1 0h2m1 0h3m4 0h3m3 0h1m2 0h1m2 0h1m1 0h3m1 0h1m2 0h1m1 0h2M2 11.5h2m1 0h3m1 0h2m1 0h1m2 0h1m1 0h1m1 0h2m1 0h4m4 0h1m2 0h1m2 0h2M2 12.5h3m1 0h1m1 0h1m1 0h2m1 0h2m3 0h2m1 0h2m1 0h3m1 0h1m1 0h2m1 0h2M3 13.5h2m1 0h2m5 0h2m3 0h1m3 0h1m1 0h1m1 0h4m2 0h1m2 0h2M2 14.5h2m1 0h1m2 0h4m3 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h3m2 0h2m1 0h5M2 15.5h3m4 0h4m1 0h1m1 0h8m2 0h1m1 0h8m1 0h2M2 16.5h1m2 0h1m2 0h2m1 0h2m1 0h1m1 0h1m4 0h4m2 0h1m3 0h2m1 0h1m1 0h2M2 17.5h3m1 0h2m1 0h2m1 0h1m3 0h1m4 0h3m1 0h1m2 0h2m3 0h2m2 0h2M4 18.5h1m2 0h2m3 0h2m2 0h1m2 0h1m1 0h3m3 0h1m1 0h1m1 0h1m3 0h2M7 19.5h1m4 0h3m1 0h1m2 0h3m1 0h4m2 0h2m1 0h1m3 0h3M5 20.5h1m2 0h3m3 0h1m5 0h1m2 0h1m2 0h7m1 0h1m2 0h2M2 21.5h1m3 0h1m2 0h3m5 0h4m4 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1M2 22.5h1m2 0h4m1 0h1m2 0h2m1 0h2m1 0h2m2 0h1m1 0h1m3 0h3m1 0h3m2 0h1M2 23.5h1m1 0h1m1 0h2m4 0h1m1 0h2m2 0h2m1 0h2m1 0h4m2 0h2m3 0h1m1 0h1M3 24.5h3m1 0h2m1 0h2m1 0h3m2 0h1m1 0h1m2 0h3m1 0h1m2 0h1m1 0h2M3 25.5h1m2 0h2m6 0h3m2 0h1m1 0h1m2 0h1m1 0h2m1 0h4m1 0h4M3 26.5h3m1 0h3m3 0h2m1 0h1m1 0h1m2 0h1m2 0h1m1 0h3m2 0h2m1 0h1m1 0h2M3 27.5h1m1 0h1m3 0h1m5 0h2m2 0h1m1 0h1m4 0h5m1 0h4m1 0h2M3 28.5h1m1 0h2m1 0h1m4 0h2m4 0h1m1 0h2m3 0h3m2 0h1m2 0h1m1 0h2M2 29.5h1m1 0h1m2 0h1m1 0h2m2 0h3m1 0h1m4 0h3m3 0h2m2 0h3M5 30.5h1m2 0h1m2 0h1m1 0h1m2 0h1m3 0h5m1 0h2m1 0h6m1 0h3M10 31.5h3m4 0h2m3 0h6m2 0h1m3 0h1m1 0h1m1 0h1M2 32.5h7m1 0h1m2 0h1m1 0h4m1 0h1m2 0h1m3 0h1m2 0h1m1 0h1m1 0h1m1 0h3M2 33.5h1m5 0h1m1 0h6m1 0h1m1 0h3m4 0h1m2 0h2m3 0h1M2 34.5h1m1 0h3m1 0h1m5 0h1m2 0h2m4 0h1m1 0h1m2 0h1m1 0h6m2 0h1M2 35.5h1m1 0h3m1 0h1m1 0h2m1 0h3m1 0h3m1 0h6m2 0h4m1 0h3m1 0h1M2 36.5h1m1 0h3m1 0h1m1 0h5m1 0h2m1 0h1m2 0h2m1 0h2m3 0h1m1 0h1m1 0h2M2 37.5h1m5 0h1m2 0h1m2 0h2m1 0h1m2 0h3m1 0h2m1 0h1m5 0h4M2 38.5h7m1 0h2m1 0h3m3 0h1m5 0h4m2 0h1m2 0h5\"/><\/svg>\n"}],"arbeitsblaetter":[{"label":"Arbeitsblatt eA","dateien":[{"name":"franck-hertz-ea.pdf","href":"ab/franck-hertz-ea.pdf"},{"name":"franck-hertz-ea-hilfen.pdf","href":"ab/franck-hertz-ea-hilfen.pdf"}],"niveau":"eA"},{"label":"Arbeitsblatt gA","dateien":[{"name":"franck-hertz-ga.pdf","href":"ab/franck-hertz-ga.pdf"},{"name":"franck-hertz-ga-hilfen.pdf","href":"ab/franck-hertz-ga-hilfen.pdf"}],"niveau":"gA"}]}]}</script>
+<script>
+(()=>{var _="physik-simulationen:ok";var A=()=>globalThis.crypto;async function O(e,t){let{subtle:n}=A(),r=await n.importKey("raw",new TextEncoder().encode(e),"PBKDF2",!1,["deriveKey"]);return n.deriveKey({name:"PBKDF2",salt:t,iterations:6e5,hash:"SHA-256"},r,{name:"AES-GCM",length:256},!0,["encrypt","decrypt"])}async function E(e,t){let n=e.slice(0,12),r=e.slice(12);return new Uint8Array(await A().subtle.decrypt({name:"AES-GCM",iv:n},t,r))}function he(e){let t="";for(let n of e)t+=String.fromCharCode(n);return btoa(t)}function pe(e){let t=atob(e),n=new Uint8Array(t.length);for(let r=0;r<t.length;r++)n[r]=t.charCodeAt(r);return n}async function K(e){return he(new Uint8Array(await A().subtle.exportKey("raw",e)))}function V(e){return A().subtle.importKey("raw",pe(e),{name:"AES-GCM",length:256},!0,["encrypt","decrypt"])}function Z(e,t){return t?e.jahrgang.includes(t.jahrgang)?!t.niveau||e.niveau.length===0||e.niveau.includes(t.niveau):!1:!0}var F=e=>String(e).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();function D(e,t){let n=F(t).trim();return!n||F(`${e.titel} ${e.thema??""}`).includes(n)}function Q(e,t){return t?.niveau&&e.niveau.includes(t.niveau)?{niveau:t.niveau,umschalter:[]}:e.niveau.length>1?{niveau:e.niveau.includes("eA")?"eA":e.niveau[0],umschalter:[...e.niveau]}:{niveau:e.niveau[0]??"",umschalter:[]}}var I=e=>t=>!e||!t.niveau||t.niveau===e;function X(e,t){let n=e.simulationen.filter(I(t)),r=n.length>1,s=[];for(let i of n){let l=r?` ${i.label}`:"";s.push({art:"start",href:i.href,text:`Starten${l}`}),s.push({art:"qr",href:i.href,text:`QR-Code${l}`}),s.push({art:"html",href:i.href,download:i.href.split("/").pop(),text:`HTML${l}`})}for(let i of e.arbeitsblaetter.filter(I(t)))i.dateien.forEach((l,u)=>{let B=u===0?t?"Arbeitsblatt":i.label:/hilfen/i.test(l.name)?"Hilfen":`${t?"Arbeitsblatt":i.label} (Teil ${u+1})`;s.push({art:"datei",href:l.href,download:l.name,text:B})});return s}function Y(e,t){let n=s=>t&&s.endsWith(` ${t}`)?s.slice(0,-t.length-1):s,r=(e?.dateien??[]).filter(I(t)).map(s=>({datei:s,label:n(s.label)}));return e?.zip&&r.push({datei:e.zip,label:"alles (ZIP)"}),r}var R="sammlung-schluessel",me="Passwort falsch",ge="Das Passwort wurde ge\xE4ndert \u2013 bitte neu anmelden.",G="Bitte \xFCber die Internetadresse oder <code>npm run sammlung -- --zeigen</code> \xF6ffnen.",a=e=>document.querySelector(e),S=e=>[...document.querySelectorAll(e)],T=JSON.parse(a("#katalog").textContent),k=class extends Error{},ee=e=>{try{return window[e]??null}catch{return null}},J=()=>["localStorage","sessionStorage"].map(ee).filter(Boolean),w={lies(){for(let e of J())try{let t=e.getItem(R);if(t)return t}catch{}return null},schreibe(e,t){this.loesche();try{ee(t?"localStorage":"sessionStorage")?.setItem(R,e)}catch{}},loesche(){for(let e of J())try{e.removeItem(R)}catch{}}};function c(e,t={},n=[]){let r=document.createElement(e);for(let[s,i]of Object.entries(t))s==="text"?r.textContent=i:s==="klasse"?r.className=i:r.setAttribute(s,i);return r.append(...n),r}var be=e=>e.replace("Pr\xFCfungsfassung","Pr\xFCfungs\xADfassung"),y=(e,t)=>[c("span",{klasse:"sym","aria-hidden":"true",text:e}),c("span",{klasse:"txt",text:be(t)})],d={kurs:null,suche:""},te=new Map(T.versuche.map(e=>[e.id,e])),ve=new Map(T.werkzeuge.map(e=>[e.id,e]));function q(){let e=d.kurs?.name??"alle";for(let n of S("[data-kurs]"))n.setAttribute("aria-pressed",String(n.dataset.kurs===e));let t=0;for(let n of S(".karte[data-id]")){let r=te.get(n.dataset.id),s=!!r&&Z(r,d.kurs)&&D(r,d.suche);n.hidden=!s,s&&t++}for(let n of S(".karte[data-werkzeug]")){let r=ve.get(n.dataset.werkzeug);n.hidden=!(r&&!d.kurs&&D(r,d.suche)),n.hidden||t++}a("#leer-hinweis").hidden=t>0}a("#filter").addEventListener("click",e=>{let t=e.target.closest("[data-kurs]");t&&(d.kurs=t.dataset.kurs==="alle"?null:{name:t.dataset.kurs,jahrgang:t.dataset.jahrgang,niveau:t.dataset.stufe??""},q())});a("#suche").addEventListener("input",e=>{d.suche=e.target.value,q()});a("#filter-zuruecksetzen").addEventListener("click",()=>{d.kurs=null,d.suche="",a("#suche").value="",q()});var f=a("#blatt"),P=a("#schleier"),z=a(".app"),o=null,we='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3z"/></svg>',L={start:"\u25B6\uFE0E",html:"\u2193",datei:"\u25A4",hilfen:"\u2726"};function ye(e,t){if(e.art==="start")return c("a",{klasse:"aktion haupt","data-start":e.href,href:e.href,target:"_blank",rel:"noopener"},y(L.start,e.text));if(e.art==="qr"){let r=c("button",{type:"button",klasse:"aktion glas2","data-qr":e.href,"aria-label":`${e.text} f\xFCr ${t.titel} zeigen`},y("",e.text));return r.querySelector(".sym").innerHTML=we,r}let n=e.art==="html"?L.html:/^Hilfen/.test(e.text)?L.hilfen:L.datei;return c("a",{klasse:"aktion glas2",href:e.href,download:e.download},y(n,e.text))}function ne(){let{v:e,niveau:t,umschalter:n}=o;a("#blatt-meta").textContent=[e.jahrgang.join(", "),t].filter(Boolean).join(" \xB7 ");let r=a("#blatt-niveau");r.hidden=n.length===0,r.replaceChildren(...n.map(s=>c("button",{type:"button",klasse:"segment-knopf","data-sheet-niveau":s,"aria-pressed":String(s===t)},[s]))),a("#blatt-aktionen").replaceChildren(...X(e,t).map(s=>ye(s,e))),de()}var v=null;function re(e){let t=document.body.style;if(e&&v===null)v=window.scrollY,Object.assign(t,{position:"fixed",top:`-${v}px`,left:"0",right:"0",width:"100%"});else if(!e&&v!==null){let n=v;v=null,Object.assign(t,{position:"",top:"",left:"",right:"",width:""}),window.scrollTo(0,n)}}function ke(e,t){o&&$(!1),o={v:e,...Q(e,d.kurs),ausloeser:t},a("#blatt-titel").textContent=e.titel,a("#blatt-text").textContent=e.kurztext??"",f.querySelector(".mini use").setAttribute("href",`#kachel-${e.id}`),ne(),re(!0),P.hidden=!1,f.hidden=!1,z.inert=!0,z.setAttribute("aria-hidden","true"),f.scrollTop=0,f.focus()}function $(e=!0){if(!o)return;let{ausloeser:t}=o;o=null,f.hidden=!0,P.hidden=!0,z.inert=!1,z.removeAttribute("aria-hidden"),f.querySelector(".lehrerspalte")?.remove(),a("#blatt-aktionen").replaceChildren(),a("#blatt-niveau").replaceChildren(),f.querySelector(".mini use").removeAttribute("href"),re(!1),e&&t?.isConnected&&t.focus()}document.addEventListener("click",e=>{let t=e.target.closest("[data-oeffnen]");if(t){let s=te.get(t.dataset.oeffnen);s&&ke(s,t);return}let n=e.target.closest("[data-sheet-niveau]");if(n&&o&&n.dataset.sheetNiveau!==o.niveau){o.niveau=n.dataset.sheetNiveau,ne(),f.querySelector(`[data-sheet-niveau="${o.niveau}"]`)?.focus();return}let r=e.target.closest("[data-qr]");r&&Ae(r)});P.addEventListener("click",()=>$());a("#blatt-zu").addEventListener("click",()=>$());var h=a("#qr-ebene"),x=null;function Ae(e){let t=o?.v,n=t?.simulationen.find(r=>r.href===e.dataset.qr);n&&(h.querySelector(".qr-code").innerHTML=n.qr,a("#qr-titel").textContent=t.simulationen.length>1?`${t.titel} \u2013 ${n.label}`:t.titel,h.querySelector(".qr-adresse").textContent=T.basisAdresse+n.href,x=e,h.hidden=!1,h.focus())}function se(){h.hidden||(h.hidden=!0,h.querySelector(".qr-code").innerHTML="",x?.isConnected&&x.focus(),x=null)}h.addEventListener("click",se);document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!h.hidden){e.preventDefault(),se();return}p.open||o&&(e.preventDefault(),$())}});var p=a("#anmelde-dialog"),j=a("#anmelde-meldung"),g=null,C=null,b=0,Ee=(()=>{let e=atob(T.salz);return Uint8Array.from(e,t=>t.charCodeAt(0))})(),H=()=>!!globalThis.crypto?.subtle;async function M(e){let t;try{t=await fetch(e,{cache:"no-store"})}catch{throw new k(e)}if(!t.ok)throw new k(e);return new Uint8Array(await t.arrayBuffer())}async function ae(e,t){try{return new TextDecoder().decode(await E(e,t))===_}catch{return!1}}function m(e,{html:t=!1,info:n=!1}={}){j.classList.toggle("info",n),t?j.innerHTML=e:j.textContent=e}function ie(e="",t=!1){m(e,{info:t}),a("#passwort").value="",p.open||(typeof p.showModal=="function"?p.showModal():p.setAttribute("open","")),a("#passwort").focus()}function oe(){typeof p.close=="function"?p.close():p.removeAttribute("open")}function le(e){a("#anmelden").hidden=e,a("#abmelden").hidden=!e}a("#anmelden").addEventListener("click",()=>{ie(),(location.protocol==="file:"||!H())&&m(G,{html:!0,info:!0})});a("#anmelden-abbrechen").addEventListener("click",oe);p.addEventListener("close",()=>{a("#abmelden").hidden&&!o&&a("#anmelden").focus()});a("#anmelde-formular").addEventListener("submit",async e=>{e.preventDefault();let t=a("#passwort").value.normalize("NFC");if(!t){m("Bitte das Passwort eingeben.");return}if(!H()){m(G,{html:!0,info:!0});return}let n=a("#anmelden-los");n.disabled=!0,n.setAttribute("aria-busy","true"),m("Passwort wird gepr\xFCft \u2026",{info:!0}),b++;try{let r=await M("geheim/pruefung.enc"),s=await O(t,Ee);if(!await ae(r,s)){m(me),a("#passwort").select();return}await Le(s),w.schreibe(await K(s),a("#angemeldet-bleiben").checked),oe(),o||a("#abmelden").focus()}catch(r){r instanceof k?m(G,{html:!0,info:!0}):m("Die Anmeldung ist fehlgeschlagen. Bitte die Seite neu laden und erneut versuchen.")}finally{n.disabled=!1,n.removeAttribute("aria-busy")}});a("#abmelden").addEventListener("click",()=>{b++,g=null,C=null,fe();for(let e of S(".lehrerspalte"))e.remove();le(!1),a("#anmelden").focus(),w.loesche()});async function Le(e){ue(e,await ce(e))}async function ce(e){return JSON.parse(new TextDecoder().decode(await E(await M("geheim/lehrkraft.json.enc"),e)))}function ue(e,t){fe(),g=e,C=t,le(!0),de()}async function Se(){let e=w.lies();if(!e||!H()||location.protocol==="file:")return;let t=b,n=()=>b!==t||g!==null,r;try{r=await V(e)}catch{n()||w.loesche();return}let s;try{s=await M("geheim/pruefung.enc")}catch{return}let i=await ae(s,r);if(!n()){if(!i){w.loesche(),ie(ge,!0);return}try{let l=await ce(r);n()||ue(r,l)}catch{}}}var xe={pdf:"application/pdf",html:"text/html",zip:"application/zip"},ze=e=>xe[e.split(".").pop().toLowerCase()]??"application/octet-stream",W={neu:"neu",aktualisiert:"aktualisiert"};function Ce(e){return/^Lösung/.test(e)?"\u2713":/^LN/.test(e)?"\u270E":/^EH/.test(e)?"\u2611\uFE0E":/Prüfungsfassung/.test(e)?"\u29C9":/ZIP/.test(e)?"\u21E3":"\u2193"}function Ne(e,t,n){let r=y(Ce(e),e);n&&r.push(c("span",{klasse:`lehrer-marke ${n}`,title:W[n]??n,"aria-label":`(${W[n]??n})`,role:"img"}));let s=c("button",{type:"button",klasse:"aktion lehrer","data-lehrer-datei":t.datei},r);return s.addEventListener("click",()=>{$e(t,s,e).catch(()=>{})}),s}function de(){if(f.querySelector(".lehrerspalte")?.remove(),!o||!g||!C)return;let e=C.versuche?.[o.v.id];if(!e)return;let t=c("div",{klasse:"lehrer-knoepfe"},Y(e,o.niveau).map(({datei:n,label:r})=>Ne(r,n,n.marke)));f.append(c("section",{klasse:"lehrerspalte","aria-labelledby":"lehrer-titel"},[c("h3",{id:"lehrer-titel",text:"Lehrkraft"}),t]))}function Te(e,t,n=!1){let r=e.closest(".lehrerspalte");if(!r)return;r.querySelector(".karten-meldung")?.remove();let s=c("p",{klasse:`karten-meldung${n?" info":""}`,role:"status"});s.append(...t),r.append(s)}var qe=12e4,N=new Set;function fe(){for(let e of N)clearTimeout(e.timer),URL.revokeObjectURL(e.url);N.clear()}async function $e(e,t,n){if(!g||t.getAttribute("aria-busy")==="true")return;t.setAttribute("aria-busy","true"),t.closest(".lehrerspalte")?.querySelector(".karten-meldung")?.remove();let r=b,s=g;try{let i=await E(await M(e.enc),s);if(b!==r||g!==s||!t.isConnected)return;let l=URL.createObjectURL(new Blob([i],{type:ze(e.datei)})),u=c("a",{klasse:"aktion lehrer bereit",href:l,download:e.datei,"data-lehrer-datei":e.datei,"aria-label":`${n} \u2013 bereit, zum Speichern tippen`},y("\u2193",`${n}: bereit \u2013 zum Speichern tippen`));u.hidden=t.hidden;let B=document.activeElement===t;t.removeAttribute("aria-busy"),t.replaceWith(u),B&&u.focus();let U={url:l,timer:0};U.timer=setTimeout(()=>{N.delete(U),URL.revokeObjectURL(l),u.isConnected&&(t.hidden=u.hidden,u.replaceWith(t))},qe),N.add(U),u.click()}catch{if(b!==r||!t.isConnected)return;Te(t,[`\u201E${e.datei}\u201C konnte nicht geladen werden. Bitte die Seite neu laden und erneut versuchen.`])}finally{t.removeAttribute("aria-busy")}}q();Se().catch(()=>{});})();
+
+</script>
+</body>
+</html>
